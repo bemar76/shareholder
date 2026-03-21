@@ -56,27 +56,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ## Shareholder ${{ github.ref_name }}
-
-            **NAS Drive Mapper** – Verbindet NAS-Freigaben als Windows-Netzlaufwerke.
-
-            ### Installation
-            1. `shareholder.exe` herunterladen und in ein beliebiges Verzeichnis kopieren
-            2. Ersteinrichtung: `shareholder.exe --setup`
-            3. Laufwerke verbinden: `shareholder.exe`
-
-            ### Weitere Befehle
-            | Befehl | Beschreibung |
-            |---|---|
-            | `shareholder.exe --unmap` | Alle Laufwerke trennen |
-            | `shareholder.exe --forget` | Gespeichertes Passwort löschen |
-            | `shareholder.exe --help` | Hilfe anzeigen |
-
-            ---
-            © 2026 Benjamin Mark
-          files: build/Release/shareholder.exe
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
