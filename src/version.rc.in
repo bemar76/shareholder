@@ -1,0 +1,38 @@
+#include <windows.h>
+
+// Wird von CMake via configure_file() generiert.
+// Werte stammen aus CMakeLists.txt (project VERSION) bzw. dem CI-Git-Tag.
+
+#define VER_MAJOR @PROJECT_VERSION_MAJOR@
+#define VER_MINOR @PROJECT_VERSION_MINOR@
+#define VER_PATCH @PROJECT_VERSION_PATCH@
+#define VER_BUILD 0
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VER_MAJOR, VER_MINOR, VER_PATCH, VER_BUILD
+PRODUCTVERSION  VER_MAJOR, VER_MINOR, VER_PATCH, VER_BUILD
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704E4"   // Sprache: Deutsch (Deutschland), Codepage: Windows-1252
+        BEGIN
+            VALUE "CompanyName",      "Benjamin Mark"
+            VALUE "FileDescription",  "Shareholder - NAS Drive Mapper"
+            VALUE "FileVersion",      "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@.0"
+            VALUE "InternalName",     "shareholder"
+            VALUE "LegalCopyright",   "Copyright (C) @COPYRIGHT_YEAR@ Benjamin Mark"
+            VALUE "OriginalFilename", "shareholder.exe"
+            VALUE "ProductName",      "Shareholder"
+            VALUE "ProductVersion",   "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0407, 0x04E4   // Deutsch (Deutschland)
+    END
+END
