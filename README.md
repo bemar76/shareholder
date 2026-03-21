@@ -24,7 +24,7 @@ automatisch beim Programmstart, sicher verschlüsselt und ohne Administratorrech
 
 ## 1. Überblick
 
-Shareholder löst das Problem, dass NAS-Laufwerke nach jedem Windows-Start
+Shareholder löst das Problem, dass NAS-Laufwerke vom gleichen NAS-Host mit unterschiedlichen Credentials nach jedem Windows-Start
 manuell neu verbunden werden müssen. Das Programm:
 
 - liest eine **verschlüsselte Konfigurationsdatei** (`shares.cfg`),
