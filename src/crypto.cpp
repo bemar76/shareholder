@@ -1,8 +1,6 @@
 #include "crypto.h"
 
 #define WIN32_NO_STATUS
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 #undef WIN32_NO_STATUS
 #include <ntstatus.h>

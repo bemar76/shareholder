@@ -1,7 +1,5 @@
 #include "drive_mapper.h"
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 #include <winnetwk.h>
 
