@@ -13,8 +13,8 @@ automatisch beim Programmstart, sicher verschlüsselt und ohne Administratorrech
 4. [Ersteinrichtung](#4-ersteinrichtung)
 5. [Laufwerke verbinden](#5-laufwerke-verbinden)
 6. [Laufwerke trennen](#6-laufwerke-trennen)
-7. [Passwort verwalten](#7-passwort-verwalten)
-8. [Konfiguration ändern](#8-konfiguration-ändern)
+7. [Konfiguration verwalten](#7-konfiguration-verwalten)
+8. [Passwort verwalten](#8-passwort-verwalten)
 9. [Befehlsübersicht](#9-befehlsübersicht)
 10. [Fehlerbehebung](#10-fehlerbehebung)
 11. [Sicherheitshinweise](#11-sicherheitshinweise)
@@ -192,6 +192,8 @@ und sind sofort nutzbar.
 
 ## 6. Laufwerke trennen
 
+### Alle Laufwerke trennen
+
 ```bat
 shareholder.exe --unmap
 ```
@@ -199,9 +201,90 @@ shareholder.exe --unmap
 Trennt alle in der Konfiguration hinterlegten Laufwerke. Geöffnete Dateien
 auf den Netzlaufwerken werden dabei zwangsweise geschlossen.
 
+### Einzelnes Laufwerk trennen
+
+```bat
+shareholder.exe --unmap Z:
+```
+
+Trennt nur das angegebene Laufwerk, ohne die anderen zu beeinflussen.
+
 ---
 
-## 7. Passwort verwalten
+## 7. Konfiguration verwalten
+
+### Alle Shares anzeigen
+
+```bat
+shareholder.exe --list
+```
+
+Gibt eine tabellarische Übersicht aller konfigurierten Shares aus:
+
+```
+Konfigurierte Shares (2):
+
+  Nr  Laufwerk  UNC-Pfad                          Benutzer
+  --- --------- --------------------------------- --------------------
+  [1]  Z:        \\192.168.1.100\daten             admin
+  [2]  Y:        \\192.168.1.100\backup            (aktueller Benutzer)
+```
+
+### Details eines Shares anzeigen
+
+```bat
+shareholder.exe --show Z:
+```
+
+Zeigt alle gespeicherten Felder eines einzelnen Shares (Passwort wird nicht
+im Klartext angezeigt):
+
+```
+Share-Details: Z:
+  Laufwerk : Z:
+  UNC-Pfad : \\192.168.1.100\daten
+  Benutzer : admin
+  Passwort : ***
+```
+
+### Einzelnen Share hinzufügen
+
+```bat
+shareholder.exe --add
+```
+
+Fügt einen neuen Share zur bestehenden Konfiguration hinzu, ohne die anderen
+Einträge zu verändern. Der Assistent fragt Laufwerk, UNC-Pfad, Benutzername
+und optionales Share-Passwort ab. Doppelte Laufwerksbuchstaben werden abgelehnt.
+
+### Share entfernen
+
+```bat
+shareholder.exe --remove Z:
+```
+
+Löscht den Share mit dem angegebenen Laufwerksbuchstaben nach einer
+Bestätigungsabfrage:
+
+```
+Share loeschen: Z: -> \\192.168.1.100\daten
+Bestaetigen? [j/N]: j
+Share 'Z:' geloescht und Konfiguration gespeichert.
+```
+
+### Komplette Konfiguration neu erstellen
+
+```bat
+shareholder.exe --setup
+```
+
+Erstellt die gesamte Konfiguration von Grund auf neu (Passwort + alle Shares).
+Die alte `shares.cfg` wird dabei überschrieben. Sinnvoll bei einem
+Passwortwechsel oder wenn viele Änderungen nötig sind.
+
+---
+
+## 8. Passwort verwalten
 
 ### Gespeichertes Passwort löschen
 
@@ -218,34 +301,43 @@ Da das Passwort den Verschlüsselungsschlüssel der Konfigurationsdatei
 ableitet, muss bei einem Passwortwechsel die gesamte Konfiguration neu
 erstellt werden:
 
-1. Altes `shares.cfg` sichern oder löschen.
-2. `shareholder.exe --setup` erneut ausführen.
-3. Gleiches Passwort eingeben, falls der Credential-Manager-Eintrag
-   aktualisiert werden soll, oder `--forget` vorher ausführen.
-
----
-
-## 8. Konfiguration ändern
-
-Um Shares hinzuzufügen, zu entfernen oder zu ändern:
-
-1. `shareholder.exe --setup` ausführen.
-2. Neues Passwort eingeben (kann dasselbe wie bisher sein).
-3. Alle Shares neu eingeben.
-
-Die alte `shares.cfg` wird dabei überschrieben.
+1. `shareholder.exe --forget` ausführen (gespeichertes Passwort löschen).
+2. Alte `shares.cfg` löschen oder sichern.
+3. `shareholder.exe --setup` erneut ausführen und neues Passwort wählen.
 
 ---
 
 ## 9. Befehlsübersicht
 
+### Laufwerke
+
 | Befehl | Beschreibung |
 |---|---|
 | `shareholder.exe` | Alle Laufwerke verbinden |
-| `shareholder.exe --setup` | Neue Konfiguration erstellen (Ersteinrichtung / Änderung) |
 | `shareholder.exe --unmap` | Alle Laufwerke trennen |
+| `shareholder.exe --unmap Z:` | Einzelnes Laufwerk trennen |
+
+### Konfiguration
+
+| Befehl | Beschreibung |
+|---|---|
+| `shareholder.exe --setup` | Komplette Konfiguration neu erstellen |
+| `shareholder.exe --list` | Alle konfigurierten Shares anzeigen |
+| `shareholder.exe --show Z:` | Details eines einzelnen Shares anzeigen |
+| `shareholder.exe --add` | Einzelnen Share hinzufügen |
+| `shareholder.exe --remove Z:` | Share entfernen |
+
+### Passwort
+
+| Befehl | Beschreibung |
+|---|---|
 | `shareholder.exe --forget` | Gespeichertes Passwort aus dem Credential Manager löschen |
-| `shareholder.exe --help` | Kurzübersicht der Befehle anzeigen |
+
+### Sonstiges
+
+| Befehl | Beschreibung |
+|---|---|
+| `shareholder.exe --help` | Alle Befehle und Beispiele anzeigen |
 
 ---
 
@@ -275,7 +367,7 @@ Mögliche Ursachen:
 
 | Fehlermeldung (Windows) | Ursache | Lösung |
 |---|---|---|
-| `Zugriff verweigert` | Falscher Benutzername / Share-Passwort | Config mit `--setup` aktualisieren |
+| `Zugriff verweigert` | Falscher Benutzername / Share-Passwort | Config mit `--remove` + `--add` aktualisieren |
 | `Netzwerkpfad nicht gefunden` | NAS nicht erreichbar / UNC-Pfad falsch | Netzwerk prüfen, UNC-Pfad prüfen |
 | `Lokaler Gerätename wird bereits verwendet` | Laufwerksbuchstabe belegt | Anderen Buchstaben in der Config wählen |
 | `Mehrfache Verbindungen...nicht unterstützt` | NAS erlaubt pro Benutzer nur eine Verbindung | Gleichen Benutzer für alle Shares eines NAS verwenden |
