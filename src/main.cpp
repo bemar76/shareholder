@@ -9,6 +9,7 @@
 #include <string>
 #include <filesystem>
 #include <stdexcept>
+#include <algorithm>
 #include <cstdlib>
 
 // ---------------------------------------------------------------------------
@@ -33,12 +34,35 @@ static void printBanner() {
 }
 
 static void printUsage(const char* exe) {
-    std::cout << "Verwendung:\n"
-              << "  " << exe << "            -- Laufwerke verbinden\n"
-              << "  " << exe << " --setup    -- Neue Konfiguration erstellen\n"
-              << "  " << exe << " --forget   -- Gespeichertes Passwort loeschen\n"
-              << "  " << exe << " --unmap    -- Alle Laufwerke trennen\n"
-              << "  " << exe << " --help     -- Diese Hilfe\n\n";
+    std::cout <<
+        "Verwendung: " << exe << " [BEFEHL] [OPTIONEN]\n"
+        "\n"
+        "BEFEHLE (Konfiguration):\n"
+        "  (kein Argument)              Alle Laufwerke verbinden\n"
+        "  --setup                      Neue Konfiguration interaktiv erstellen\n"
+        "  --list                       Alle konfigurierten Shares anzeigen\n"
+        "  --add                        Einen neuen Share interaktiv hinzufuegen\n"
+        "  --remove <Laufwerk>          Share entfernen, z.B. --remove Z:\n"
+        "  --show <Laufwerk>            Details eines Shares anzeigen\n"
+        "\n"
+        "BEFEHLE (Laufwerke):\n"
+        "  --unmap                      Alle Laufwerke trennen\n"
+        "  --unmap <Laufwerk>           Einzelnes Laufwerk trennen, z.B. --unmap Z:\n"
+        "\n"
+        "BEFEHLE (Passwort):\n"
+        "  --forget                     Gespeichertes Passwort aus Credential Manager loeschen\n"
+        "\n"
+        "SONSTIGES:\n"
+        "  --help, -h                   Diese Hilfe anzeigen\n"
+        "\n"
+        "BEISPIELE:\n"
+        "  " << exe << " --setup         Ersteinrichtung\n"
+        "  " << exe << "                 Alle Laufwerke verbinden\n"
+        "  " << exe << " --list          Konfigurierte Shares anzeigen\n"
+        "  " << exe << " --add           Neuen Share hinzufuegen\n"
+        "  " << exe << " --remove Z:     Share Z: loeschen\n"
+        "  " << exe << " --unmap Z:      Nur Laufwerk Z: trennen\n"
+        "\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -144,9 +168,9 @@ static void runConnect() {
 }
 
 // ---------------------------------------------------------------------------
-// --unmap flow
+// --unmap [Laufwerk]
 // ---------------------------------------------------------------------------
-static void runUnmap() {
+static void runUnmap(const std::string& drive = "") {
     if (!config_manager::exists(CONFIG_FILE)) {
         std::cerr << "Keine Konfigurationsdatei gefunden.\n";
         return;
@@ -154,9 +178,148 @@ static void runUnmap() {
     std::string pw = getVerifiedPassword(CONFIG_FILE, true);
     AppConfig cfg  = config_manager::load(CONFIG_FILE, pw);
 
-    std::cout << "Trenne Laufwerke...\n";
-    drive_mapper::unmapAll(cfg);
-    std::cout << "Erledigt.\n";
+    if (drive.empty()) {
+        std::cout << "Trenne alle Laufwerke...\n";
+        drive_mapper::unmapAll(cfg);
+        std::cout << "Erledigt.\n";
+    } else {
+        drive_mapper::unmapDrive(drive, true);
+        std::cout << "Laufwerk " << drive << " getrennt.\n";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// --list  – alle konfigurierten Shares anzeigen
+// ---------------------------------------------------------------------------
+static void runList() {
+    if (!config_manager::exists(CONFIG_FILE)) {
+        std::cout << "Keine Konfigurationsdatei gefunden. Bitte --setup ausfuehren.\n";
+        return;
+    }
+    std::string pw = getVerifiedPassword(CONFIG_FILE, true);
+    AppConfig cfg  = config_manager::load(CONFIG_FILE, pw);
+
+    if (cfg.shares.empty()) {
+        std::cout << "Keine Shares konfiguriert.\n";
+        return;
+    }
+    std::cout << "Konfigurierte Shares (" << cfg.shares.size() << "):\n\n";
+    std::cout << "  Nr  Laufwerk  UNC-Pfad                          Benutzer\n";
+    std::cout << "  --- --------- --------------------------------- --------------------\n";
+    for (size_t i = 0; i < cfg.shares.size(); ++i) {
+        const auto& s = cfg.shares[i];
+        std::cout << "  [" << (i + 1) << "]  "
+                  << s.driveLetter
+                  << "        "
+                  << s.uncPath;
+        // pad to column
+        if (s.uncPath.size() < 33)
+            std::cout << std::string(33 - s.uncPath.size(), ' ');
+        std::cout << "  " << (s.username.empty() ? "(aktueller Benutzer)" : s.username)
+                  << "\n";
+    }
+    std::cout << "\n";
+}
+
+// ---------------------------------------------------------------------------
+// --show <Laufwerk>
+// ---------------------------------------------------------------------------
+static void runShow(const std::string& drive) {
+    if (!config_manager::exists(CONFIG_FILE)) {
+        std::cerr << "Keine Konfigurationsdatei gefunden.\n";
+        return;
+    }
+    std::string pw = getVerifiedPassword(CONFIG_FILE, true);
+    AppConfig cfg  = config_manager::load(CONFIG_FILE, pw);
+
+    for (const auto& s : cfg.shares) {
+        if (s.driveLetter == drive) {
+            std::cout << "\nShare-Details: " << drive << "\n";
+            std::cout << "  Laufwerk : " << s.driveLetter << "\n";
+            std::cout << "  UNC-Pfad : " << s.uncPath     << "\n";
+            std::cout << "  Benutzer : " << (s.username.empty() ? "(aktueller Benutzer)" : s.username) << "\n";
+            std::cout << "  Passwort : " << (s.password.empty() ? "(keines)" : "***") << "\n\n";
+            return;
+        }
+    }
+    std::cerr << "Kein Share mit Laufwerk '" << drive << "' gefunden.\n";
+}
+
+// ---------------------------------------------------------------------------
+// --add  – einzelnen Share interaktiv hinzufuegen
+// ---------------------------------------------------------------------------
+static void runAdd() {
+    if (!config_manager::exists(CONFIG_FILE)) {
+        std::cerr << "Keine Konfigurationsdatei gefunden. Bitte zuerst --setup ausfuehren.\n";
+        return;
+    }
+    std::string pw = getVerifiedPassword(CONFIG_FILE, true);
+    AppConfig cfg  = config_manager::load(CONFIG_FILE, pw);
+
+    std::cout << "\n=== Neuen Share hinzufuegen ===\n\n";
+
+    ShareEntry entry;
+    std::cout << "Laufwerksbuchstabe (z.B. Z:): ";
+    std::getline(std::cin, entry.driveLetter);
+    if (entry.driveLetter.empty())
+        throw std::runtime_error("Kein Laufwerksbuchstabe angegeben.");
+    if (entry.driveLetter.size() == 1)
+        entry.driveLetter += ':';
+
+    // Check for duplicate
+    for (const auto& s : cfg.shares) {
+        if (s.driveLetter == entry.driveLetter)
+            throw std::runtime_error("Laufwerk '" + entry.driveLetter + "' ist bereits konfiguriert. Bitte zuerst --remove ausfuehren.");
+    }
+
+    std::cout << "UNC-Pfad (z.B. \\\\nas\\share): ";
+    std::getline(std::cin, entry.uncPath);
+    if (entry.uncPath.empty())
+        throw std::runtime_error("Kein UNC-Pfad angegeben.");
+
+    std::cout << "Benutzername (leer = aktueller Windows-Benutzer): ";
+    std::getline(std::cin, entry.username);
+
+    if (!entry.username.empty()) {
+        std::cout << "Share-Passwort: ";
+        std::getline(std::cin, entry.password);
+    }
+
+    cfg.shares.push_back(std::move(entry));
+    config_manager::save(CONFIG_FILE, pw, cfg);
+    std::cout << "\nShare hinzugefuegt und Konfiguration gespeichert.\n";
+}
+
+// ---------------------------------------------------------------------------
+// --remove <Laufwerk>
+// ---------------------------------------------------------------------------
+static void runRemove(const std::string& drive) {
+    if (!config_manager::exists(CONFIG_FILE)) {
+        std::cerr << "Keine Konfigurationsdatei gefunden.\n";
+        return;
+    }
+    std::string pw = getVerifiedPassword(CONFIG_FILE, true);
+    AppConfig cfg  = config_manager::load(CONFIG_FILE, pw);
+
+    auto it = std::find_if(cfg.shares.begin(), cfg.shares.end(),
+                           [&](const ShareEntry& s) { return s.driveLetter == drive; });
+    if (it == cfg.shares.end()) {
+        std::cerr << "Kein Share mit Laufwerk '" << drive << "' gefunden.\n";
+        return;
+    }
+
+    std::cout << "Share loeschen: " << drive << " -> " << it->uncPath << "\n";
+    std::cout << "Bestaetigen? [j/N]: ";
+    std::string ans;
+    std::getline(std::cin, ans);
+    if (ans.empty() || (ans[0] != 'j' && ans[0] != 'J' && ans[0] != 'y' && ans[0] != 'Y')) {
+        std::cout << "Abgebrochen.\n";
+        return;
+    }
+
+    cfg.shares.erase(it);
+    config_manager::save(CONFIG_FILE, pw, cfg);
+    std::cout << "Share '" << drive << "' geloescht und Konfiguration gespeichert.\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -186,10 +349,29 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
             if (arg == "--unmap") {
-                runUnmap();
+                std::string drive = (argc >= 3) ? argv[2] : "";
+                runUnmap(drive);
                 return 0;
             }
-            std::cerr << "Unbekanntes Argument: " << arg << "\n";
+            if (arg == "--list") {
+                runList();
+                return 0;
+            }
+            if (arg == "--show") {
+                if (argc < 3) throw std::runtime_error("--show benoetigt einen Laufwerksbuchstaben, z.B.: --show Z:");
+                runShow(argv[2]);
+                return 0;
+            }
+            if (arg == "--add") {
+                runAdd();
+                return 0;
+            }
+            if (arg == "--remove") {
+                if (argc < 3) throw std::runtime_error("--remove benoetigt einen Laufwerksbuchstaben, z.B.: --remove Z:");
+                runRemove(argv[2]);
+                return 0;
+            }
+            std::cerr << "Unbekanntes Argument: " << arg << "\n\n";
             printUsage(argv[0]);
             return 1;
         }

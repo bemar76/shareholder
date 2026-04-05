@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Version kann per CI-Tag überschrieben werden: -DSHAREHOLDER_VERSION=1.2.3
-set(SHAREHOLDER_VERSION "1.0.0" CACHE STRING "Application version")
+set(SHAREHOLDER_VERSION "1.1.0" CACHE STRING "Application version")
 
 project(shareholder VERSION ${SHAREHOLDER_VERSION} LANGUAGES CXX)
 
